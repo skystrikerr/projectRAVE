@@ -1,0 +1,7 @@
+node_modules/
+dist/
+release/
+.netlify/
+*.log
+.DS_Store
+Thumbs.db

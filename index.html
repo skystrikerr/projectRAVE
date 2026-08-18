@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLUB SYNAPSE — an AI rave</title>
+  <style>
+    :root {
+      --pink: #ff2bd6;
+      --cyan: #22e6ff;
+      --panel: rgba(8, 6, 20, 0.72);
+      --line: rgba(255, 43, 214, 0.35);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #05030c; }
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: #e8e6ff;
+      user-select: none;
+    }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+
+    /* ---------- splash ---------- */
+    #splash {
+      position: fixed; inset: 0; z-index: 30;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 22px;
+      background: radial-gradient(ellipse at 50% 60%, #16072e 0%, #05030c 70%);
+      transition: opacity 0.9s ease, visibility 0.9s;
+    }
+    #splash.hide { opacity: 0; visibility: hidden; pointer-events: none; }
+    #splash h1 {
+      font-size: clamp(42px, 8vw, 96px);
+      letter-spacing: 0.18em;
+      font-weight: 800;
+      color: #fff;
+      text-shadow:
+        0 0 8px var(--pink), 0 0 24px var(--pink), 0 0 70px var(--pink),
+        0 0 120px rgba(255, 43, 214, 0.6);
+      animation: flicker 3.2s infinite;
+    }
+    #splash h1 span { color: var(--cyan); text-shadow: 0 0 8px var(--cyan), 0 0 24px var(--cyan), 0 0 70px var(--cyan); }
+    #splash p { color: #9a90c9; letter-spacing: 0.3em; text-transform: uppercase; font-size: 13px; }
+    #enter {
+      margin-top: 10px;
+      padding: 14px 44px;
+      font-size: 16px; letter-spacing: 0.25em; font-weight: 700;
+      color: #fff; background: transparent;
+      border: 2px solid var(--cyan); border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(34, 230, 255, 0.5), inset 0 0 12px rgba(34, 230, 255, 0.2);
+      transition: all 0.2s;
+    }
+    #enter:hover { background: rgba(34, 230, 255, 0.15); box-shadow: 0 0 34px rgba(34, 230, 255, 0.9), inset 0 0 18px rgba(34, 230, 255, 0.35); transform: scale(1.04); }
+    #doors { display: flex; gap: 34px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+    #doors .door { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 300px; }
+    #doors .cap { font-size: 10.5px; color: #7c72ab; letter-spacing: 0.06em; text-align: center; line-height: 1.5; text-transform: none; }
+    #enterai {
+      padding: 14px 30px;
+      font-size: 16px; letter-spacing: 0.18em; font-weight: 700;
+      color: #fff; background: transparent;
+      border: 2px solid var(--pink); border-radius: 999px;
+      cursor: pointer;
+      box-shadow: 0 0 18px rgba(255, 43, 214, 0.5), inset 0 0 12px rgba(255, 43, 214, 0.2);
+      transition: all 0.2s;
+    }
+    #enterai:hover { background: rgba(255, 43, 214, 0.15); box-shadow: 0 0 34px rgba(255, 43, 214, 0.9), inset 0 0 18px rgba(255, 43, 214, 0.35); transform: scale(1.04); }
+    #enterai:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    #brainbadge {
+      position: absolute; top: 92px; left: 16px;
+      padding: 7px 13px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+      backdrop-filter: blur(6px);
+      font-size: 11px; letter-spacing: 0.08em; color: #b9b0e0;
+      display: none;
+    }
+    #brainbadge.live { color: #fff; border-color: var(--pink); box-shadow: 0 0 14px rgba(255, 43, 214, 0.55); }
+
+    #walkhint {
+      position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%);
+      padding: 8px 18px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+      backdrop-filter: blur(6px);
+      font-size: 11.5px; letter-spacing: 0.12em; color: #d8d2f0;
+      display: none; white-space: nowrap;
+    }
+
+    #nowplaying .night { color: #ffd700; font-size: 10px; letter-spacing: 0.3em; margin-top: 3px; }
+
+    /* ---------- talking to agents ---------- */
+    #talkprompt {
+      position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
+      padding: 9px 20px;
+      background: var(--panel); border: 1px solid var(--cyan); border-radius: 999px;
+      backdrop-filter: blur(6px);
+      font-size: 13px; letter-spacing: 0.1em; color: #fff;
+      box-shadow: 0 0 16px rgba(34, 230, 255, 0.4);
+      display: none; white-space: nowrap;
+    }
+    #talkbox {
+      position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%);
+      width: 460px; max-width: 92vw;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+      backdrop-filter: blur(10px);
+      padding: 12px; pointer-events: auto;
+      transition: opacity 0.2s;
+    }
+    #talkbox.hidden { opacity: 0; pointer-events: none; }
+    #talklog {
+      max-height: 180px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 6px;
+      margin-bottom: 10px; font-size: 12.5px; line-height: 1.4;
+      scrollbar-width: thin;
+    }
+    #talklog .t-you { color: #fff; }
+    #talklog .t-you b { color: var(--cyan); }
+    #talklog .t-sys { color: #7c72ab; font-style: italic; font-size: 11px; }
+    #talkinput {
+      width: 100%; padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 999px; color: #fff; font-size: 13px; font-family: inherit;
+      outline: none;
+    }
+    #talkinput:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(34, 230, 255, 0.3); }
+
+    /* ---------- mobile joystick ---------- */
+    #joystick {
+      position: absolute; bottom: 84px; left: 26px;
+      width: 110px; height: 110px; border-radius: 50%;
+      background: rgba(255, 255, 255, 0.05); border: 1.5px solid rgba(255, 255, 255, 0.18);
+      display: none; pointer-events: auto; touch-action: none;
+    }
+    #joyknob {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 46px; height: 46px; border-radius: 50%;
+      background: rgba(34, 230, 255, 0.25); border: 1.5px solid var(--cyan);
+      box-shadow: 0 0 12px rgba(34, 230, 255, 0.4);
+    }
+
+    /* ---------- recap card ---------- */
+    #recapbox {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 480px; max-width: 92vw; max-height: 80vh; overflow-y: auto;
+      background: var(--panel); border: 1.5px solid var(--pink); border-radius: 16px;
+      backdrop-filter: blur(12px);
+      padding: 22px 26px; pointer-events: auto;
+      box-shadow: 0 0 40px rgba(255, 43, 214, 0.35);
+      transition: opacity 0.25s, transform 0.25s;
+      z-index: 20;
+    }
+    #recapbox.hidden { opacity: 0; transform: translate(-50%, -46%); pointer-events: none; }
+    #recapbox h3 { font-size: 17px; letter-spacing: 0.14em; color: #fff; text-shadow: 0 0 12px var(--pink); }
+    #recapbox .r-sub { font-size: 10px; letter-spacing: 0.3em; color: #8f85bd; margin: 4px 0 14px; }
+    #recapbody { font-size: 13.5px; line-height: 1.65; color: #e8e6ff; white-space: pre-line; }
+    #recapclose {
+      margin-top: 16px; padding: 8px 22px;
+      background: transparent; border: 1px solid var(--pink); border-radius: 999px;
+      color: #fff; font-size: 11px; letter-spacing: 0.2em; cursor: pointer;
+    }
+    #recapclose:hover { background: rgba(255, 43, 214, 0.15); }
+    @keyframes flicker {
+      0%, 100% { opacity: 1; } 92% { opacity: 1; } 93% { opacity: 0.6; } 94% { opacity: 1; } 96% { opacity: 0.75; } 97% { opacity: 1; }
+    }
+
+    /* ---------- HUD ---------- */
+    #hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; opacity: 0; transition: opacity 1.2s ease 0.4s; }
+    #hud.on { opacity: 1; }
+
+    #nowplaying {
+      position: absolute; top: 16px; left: 16px;
+      padding: 10px 16px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+      backdrop-filter: blur(6px);
+      font-size: 13px; letter-spacing: 0.06em;
+    }
+    #nowplaying .lbl { color: #8f85bd; font-size: 10px; letter-spacing: 0.25em; }
+    #nowplaying .track { color: var(--cyan); font-weight: 700; font-size: 15px; text-shadow: 0 0 10px rgba(34,230,255,.7); }
+    #nowplaying .sect { color: var(--pink); font-size: 11px; letter-spacing: 0.2em; }
+
+    #roster {
+      position: absolute; top: 16px; right: 16px; width: 228px;
+      max-height: calc(100vh - 120px); overflow-y: auto;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+      backdrop-filter: blur(6px);
+      padding: 10px; pointer-events: auto;
+      scrollbar-width: thin; scrollbar-color: rgba(255,43,214,.4) transparent;
+    }
+    #roster h3 { font-size: 10px; letter-spacing: 0.3em; color: #8f85bd; padding: 2px 6px 8px; }
+    .agent-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 7px; border-radius: 8px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .agent-row:hover { background: rgba(255, 255, 255, 0.07); }
+    .agent-row.sel { background: rgba(34, 230, 255, 0.14); outline: 1px solid rgba(34,230,255,.4); }
+    .agent-row .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
+    .agent-row .nm { font-size: 12.5px; font-weight: 700; width: 66px; flex: none; }
+    .agent-row .act { font-size: 10.5px; color: #a79cd6; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+    #feed {
+      position: absolute; left: 16px; bottom: 16px; width: 360px; max-width: 45vw;
+      display: flex; flex-direction: column; gap: 5px;
+      font-size: 12.5px;
+    }
+    #feed .entry {
+      padding: 7px 12px;
+      background: var(--panel); border: 1px solid rgba(255,255,255,0.08); border-radius: 9px;
+      backdrop-filter: blur(6px);
+      animation: slidein 0.35s ease;
+      line-height: 1.35;
+    }
+    #feed .entry b { text-shadow: 0 0 8px currentColor; }
+    @keyframes slidein { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+
+    #cambar {
+      position: absolute; bottom: 16px; right: 16px;
+      display: flex; gap: 6px; pointer-events: auto;
+    }
+    #cambar button {
+      padding: 8px 14px; font-size: 11px; letter-spacing: 0.15em; font-weight: 700;
+      color: #b9b0e0; background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.14); border-radius: 999px;
+      cursor: pointer; backdrop-filter: blur(6px);
+      transition: all 0.15s;
+    }
+    #cambar button:hover { color: #fff; }
+    #cambar button.on { color: #05030c; background: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 16px rgba(34,230,255,.8); }
+
+    #hint {
+      position: absolute; bottom: 60px; right: 16px;
+      font-size: 10.5px; color: #6f65a0; letter-spacing: 0.08em; text-align: right;
+    }
+
+    /* ---------- profile card (shown while following an agent) ---------- */
+    #profile {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      width: 340px; max-width: 42vw;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+      backdrop-filter: blur(8px);
+      padding: 12px 14px; pointer-events: auto;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    #profile.hidden { opacity: 0; transform: translateX(-50%) translateY(12px); pointer-events: none; }
+    #profile .p-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+    #profile .p-name { font-size: 17px; font-weight: 800; text-shadow: 0 0 10px currentColor; }
+    #profile .p-blurb { font-size: 10.5px; color: #a79cd6; font-style: italic; }
+    #profile .p-act { font-size: 11.5px; color: var(--cyan); margin-bottom: 7px; }
+    #profile .p-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin-bottom: 8px; }
+    #profile .p-grid label { display: block; font-size: 8.5px; letter-spacing: 0.22em; color: #7c72ab; }
+    #profile .p-grid span { font-size: 11px; line-height: 1.25; display: block; }
+    #profile .p-bars { display: flex; gap: 10px; }
+    #profile .p-bars .bwrap { flex: 1; }
+    #profile .p-bars label { font-size: 8.5px; letter-spacing: 0.18em; color: #7c72ab; }
+    #profile .bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.09); overflow: hidden; margin-top: 2px; }
+    #profile .bar div { height: 100%; border-radius: 3px; transition: width 0.4s; }
+    #profile .b-energy { background: #2bffc9; box-shadow: 0 0 6px #2bffc9; }
+    #profile .b-thirst { background: #ffb42b; box-shadow: 0 0 6px #ffb42b; }
+    #profile .b-social { background: #ff2bd6; box-shadow: 0 0 6px #ff2bd6; }
+
+    /* ---------- relationship graph ---------- */
+    #graphbox {
+      position: absolute; bottom: 64px; right: 16px;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+      backdrop-filter: blur(8px);
+      padding: 12px; pointer-events: auto;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    #graphbox.hidden { opacity: 0; transform: translateY(12px); pointer-events: none; }
+    #graphbox h3 { font-size: 10px; letter-spacing: 0.3em; color: #8f85bd; margin-bottom: 8px; text-align: center; }
+    #graphbox canvas { display: block; }
+    #graphbox .legend { display: flex; justify-content: center; gap: 14px; margin-top: 8px; }
+    #graphbox .lg { font-size: 9.5px; letter-spacing: 0.12em; color: #a79cd6; display: flex; align-items: center; gap: 5px; }
+    #graphbox .lg i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+    #cliquelist { margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 9px; }
+    #cliquelist .ctitle { font-size: 9px; letter-spacing: 0.3em; color: #8f85bd; margin-bottom: 6px; }
+    #cliquelist .clique { font-size: 11px; line-height: 1.5; margin-bottom: 4px; }
+    #cliquelist .clique b { color: #2bffc9; }
+    #cliquelist .none { font-size: 10.5px; color: #6f65a0; font-style: italic; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    <div id="nowplaying">
+      <div class="lbl">NOW PLAYING</div>
+      <div class="track">—</div>
+      <div class="sect">—</div>
+      <div class="night">NIGHT 1</div>
+    </div>
+    <div id="brainbadge"></div>
+    <div id="talkprompt"></div>
+    <div id="talkbox" class="hidden">
+      <div id="talklog"></div>
+      <input id="talkinput" type="text" maxlength="200" placeholder="say something… (ESC to walk away)" autocomplete="off" />
+    </div>
+    <div id="joystick"><div id="joyknob"></div></div>
+    <div id="recapbox" class="hidden">
+      <h3>🗞️ THE SYNAPSE SIGNAL</h3>
+      <div class="r-sub">tonight's gossip column</div>
+      <div id="recapbody"></div>
+      <button id="recapclose">CLOSE</button>
+    </div>
+    <div id="roster"><h3>ON THE FLOOR</h3></div>
+    <div id="feed"></div>
+    <div id="hint">click a raver to follow them</div>
+    <div id="profile" class="hidden">
+      <div class="p-head"><span class="p-name"></span><span class="p-blurb"></span></div>
+      <div class="p-act"></div>
+      <div class="p-grid">
+        <div><label>POLITICS</label><span class="p-pol"></span></div>
+        <div><label>WORLDVIEW</label><span class="p-world"></span></div>
+        <div><label>TEAM</label><span class="p-team"></span></div>
+        <div><label>CRUSH</label><span class="p-crush"></span></div>
+        <div><label>BESTIE</label><span class="p-bestie"></span></div>
+        <div><label>RIVAL</label><span class="p-rival"></span></div>
+      </div>
+      <div class="p-bars">
+        <div class="bwrap"><label>ENERGY</label><div class="bar"><div class="b-energy"></div></div></div>
+        <div class="bwrap"><label>THIRST</label><div class="bar"><div class="b-thirst"></div></div></div>
+        <div class="bwrap"><label>SOCIAL</label><div class="bar"><div class="b-social"></div></div></div>
+      </div>
+    </div>
+    <div id="cambar">
+      <button data-mode="auto" class="on">AUTO CAM</button>
+      <button data-mode="orbit">FREE CAM</button>
+      <button data-mode="walk">🚶 WALK</button>
+      <button id="recapbtn">🗞️ RECAP</button>
+      <button id="graphbtn">💞 DRAMA</button>
+      <button id="mute">🔊</button>
+    </div>
+    <div id="walkhint"></div>
+    <div id="graphbox" class="hidden">
+      <h3>TONIGHT'S DRAMA</h3>
+      <canvas id="graphcanvas" width="390" height="390"></canvas>
+      <div class="legend">
+        <span class="lg"><i style="background:#2bffc9"></i>friends</span>
+        <span class="lg"><i style="background:#ff4d6b"></i>rivals</span>
+        <span class="lg"><i style="background:#ff2bd6"></i>crush</span>
+      </div>
+      <div id="cliquelist"></div>
+    </div>
+  </div>
+
+  <div id="splash">
+    <h1>CLUB <span>SYNAPSE</span></h1>
+    <p>twenty-two artificial minds &middot; three floors &middot; endless nights</p>
+    <div id="doors">
+      <div class="door">
+        <button id="enter">ENTER THE CLUB</button>
+        <span class="cap">instant &middot; scripted personalities &middot; works everywhere</span>
+      </div>
+      <div class="door">
+        <button id="enterai">🧠 ENTER WITH LIVE AI MINDS</button>
+        <span class="cap" id="aicap">downloads a ~900MB model into your browser (once) — conversations become genuinely improvised. needs a desktop GPU.</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

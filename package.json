@@ -1,0 +1,50 @@
+{
+  "name": "ai-rave-club",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5175 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win portable --publish never"
+  },
+  "dependencies": {
+    "@mlc-ai/web-llm": "^0.2.84",
+    "three": "^0.166.1"
+  },
+  "devDependencies": {
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "vite": "^5.4.0"
+  },
+  "description": "Club Synapse — an AI rave. 22 agents living in a neon nightclub.",
+  "author": "Camden Harkins",
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "club.synapse.rave",
+    "productName": "Club Synapse",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "ClubSynapse-${version}-portable.exe"
+    }
+  }
+}
