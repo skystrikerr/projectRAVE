@@ -82,3 +82,7 @@ src/
 electron/
   main.cjs         desktop shell
 ```
+<meta property="og:title" content="Your Project Title" />
+<meta property="og:description" content="A brief description of your game." />
+<meta property="og:image" content="https://yourwebsite.com/preview-image.png" />
+<meta name="twitter:card" content="summary_large_image" />
