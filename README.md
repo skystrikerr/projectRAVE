@@ -5,6 +5,12 @@ Built with Three.js + Vite. Runs in the browser or as a Windows desktop app.
 
 **Live:** https://club-synapse.netlify.app
 
+
+
+<img width="1905" height="947" alt="image" src="https://github.com/user-attachments/assets/c14efb0e-293f-4b27-bd3b-db4bc119ede4" />
+
+
+
 ---
 
 ## What it is
